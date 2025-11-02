@@ -4,21 +4,24 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
 
 # --- CONFIG ---
-MODEL_NAME = "bigcode/starcoder"  # StarCoder model
+MODEL_NAME = "bigcode/starcoder-small"  # Public, smaller version
 SAVE_DIR = Path("saved_code")
 SAVE_DIR.mkdir(exist_ok=True)
 
 # --- LOAD MODEL ---
-print("Loading model... this may take a while depending on your hardware.")
-tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-model = AutoModelForCausalLM.from_pretrained(MODEL_NAME, torch_dtype=torch.float16)
-model.eval()
+print("Downloading and loading model... this may take a few minutes on first run.")
 device = "cuda" if torch.cuda.is_available() else "cpu"
+print(f"Using device: {device}")
+
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+model = AutoModelForCausalLM.from_pretrained(MODEL_NAME, torch_dtype=torch.float16 if device=="cuda" else torch.float32)
 model.to(device)
-print(f"Model loaded on {device}.")
+model.eval()
+print("Model loaded successfully!")
 
 # --- FUNCTION TO GENERATE CODE ---
 def generate_code(prompt, max_tokens=512):
+    print("Generating code...")
     inputs = tokenizer(prompt, return_tensors="pt").to(device)
     with torch.no_grad():
         outputs = model.generate(**inputs, max_new_tokens=max_tokens, do_sample=True, temperature=0.7)
@@ -26,9 +29,11 @@ def generate_code(prompt, max_tokens=512):
     return code
 
 # --- INTERACTIVE PROMPT ---
+print("\nPrinceAI is ready! Type your coding task or 'exit' to quit.")
 while True:
-    user_prompt = input("\nEnter coding task (or 'exit' to quit):\n> ")
+    user_prompt = input("\n> ")
     if user_prompt.lower() in ["exit", "quit"]:
+        print("Exiting PrinceAI. Goodbye!")
         break
 
     code = generate_code(user_prompt)
